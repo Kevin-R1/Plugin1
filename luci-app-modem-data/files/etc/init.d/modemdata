@@ -1,0 +1,166 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2014 OpenWrt.org
+
+START=97
+STOP=13
+USE_PROCD=1
+
+pre_set()
+{
+	[ "$(uci get network.wan.ifname)" != "$1" ] && {
+		uci set network.wwan='interface'
+		uci set network.wwan.ifname="$1"
+		uci set network.wwan.proto='dhcp'
+		if [ "$ipv6" = 1 ]; then
+			uci set network.wwan6='interface'
+			uci set network.wwan6.ifname="$1"
+			uci set network.wwan6.proto='dhcpv6'
+			uci set network.wwan6.extendprefix='1'
+		fi
+		uci commit network
+
+		num=`uci show firewall |grep "name='wan'" |wc -l`
+		uci set firewall.@zone[$num].network='wan wan6 wwan wwan6'
+		uci commit firewall
+
+		ifup wwan
+		if [ "$ipv6" = 1 ]; then
+			ifup wwan6
+		fi
+	}
+
+	[ "$(uci get network.wan6.ifname)" == "$1" ] && {
+		uci set network.wan6.extendprefix='1'
+		uci commit network
+	}
+}
+
+run_dial()
+{
+	local enabled
+	config_get_bool enabled $1 enabled
+
+	if [ "$enabled" = "1" ]; then
+		local dialtools
+		local user
+		local password
+		local apn
+		local auth
+		local ipv6
+		local ipv6relay
+		local device
+
+		config_get dialtools $1 dialtools 0
+		config_get user $1 user
+		config_get password $1 password
+		config_get apn $1 apn
+		config_get auth $1 auth
+		config_get ipv6 $1 ipv6
+		config_get ipv6relay $1 ipv6relay
+		config_get device $1 device
+
+		if [ "$dialtools" = "1" ]; then
+			dialtools="fibocom-dial"
+		elif [ "$dialtools" = "2" ]; then
+			dialtools="meig-cm"
+		elif [ "$dialtools" = "3" ]; then
+			# TODO
+			return 1
+		else
+			dialtools="quectel-CM"
+		fi
+
+		if [ ! -f /etc/init.d/qmodem_init ]; then
+			procd_open_instance
+			procd_set_param command "$dialtools"
+			if [ "$ipv6" = 1 ]; then
+				procd_append_param command -4 -6
+			fi
+			if [ "$apn" != "" ];then
+				procd_append_param command -s $apn
+			fi
+			if [ "$device" != "" ]; then
+				procd_append_param command -i $device
+			fi
+			if [ "$password" != "" ];then
+				procd_append_param command $user $password $auth
+			fi
+			procd_set_param limits core="unlimited"
+			procd_set_param limits nofile="1000000 1000000"
+			procd_set_param respawn
+			procd_close_instance
+		fi
+
+		if [ -f /usr/share/modem/update_net_led.sh ]; then
+			procd_open_instance
+			procd_set_param command /usr/share/modem/update_net_led.sh
+			procd_set_param respawn
+			procd_close_instance
+		fi
+		
+		if [ "$device" == "auto" ]; then
+			if [ -d /sys/class/net/rmnet_mhi0 ]; then
+				pre_set rmnet_mhi0.1
+			elif [ -d /sys/class/net/wwan0.1 ]; then
+				pre_set wwan0.1
+			elif [ -d /sys/class/net/wwan0_1 ]; then
+				pre_set wwan0_1
+			elif [ -d /sys/class/net/wwan0 ]; then
+				pre_set wwan0
+			elif [ -d /sys/class/net/usb0 ]; then
+				pre_set usb0
+			fi
+		else
+		 pre_set $device
+		fi
+		
+		if [ "$ipv6relay" = 1 ]; then
+		 uci set network.wwan6.master='1'
+		 uci set network.wwan6.ra='relay'
+		 uci set network.wwan6.dhcpv6='relay'
+		 uci set network.wwan6.ndp='relay'
+		 uci set network.lan.ra='relay'
+		 uci set network.lan.dhcpv6='relay'
+		 uci set network.lan.ndp='relay'
+		else
+		 uci -q delete network.wwan6.master
+		 uci -q delete network.wwan6.ra
+		 uci -q delete network.wwan6.dhcpv6
+		 uci -q delete network.wwan6.ndp
+		 uci -q delete network.lan.ra
+		 uci -q delete network.lan.dhcpv6
+		 uci -q delete network.lan.ndp
+		fi
+		
+		uci commit network
+		
+	else
+	  ifdown wwan
+	  ifdown wwan6
+	  uci -q delete network.wwan
+	  uci -q delete network.wwan6
+	  uci commit network
+	fi
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger "modemdata"
+}
+
+start_service() {
+	config_load modemdata
+	config_foreach run_dial service
+}
+
+stop_service()
+{
+  if [ ! -f /etc/init.d/qmodem_init ]; then
+    killall quectel-CM >/dev/null 2>&1
+  fi
+  ifdown wwan
+  ifdown wwan6
+  uci -q delete network.wwan
+  uci -q delete network.wwan6
+  uci commit network
+}

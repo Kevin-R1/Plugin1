@@ -1,0 +1,76 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2014 OpenWrt.org
+
+START=97
+STOP=13
+USE_PROCD=1
+
+start_service() {
+	config_load "ipv6set"
+	
+	config_get "mode" "config" "mode" 0
+	config_get "v6dns" "config" "v6dns" 1
+	config_get "wan6zone" "config" "wan6zone" "wan6"
+	
+	case "${mode}" in
+	0)
+    echo "Disable IPv6 NDP"
+     uci -q delete network.${wan6zone}.master
+     uci -q delete network.${wan6zone}.ra
+     uci -q delete network.${wan6zone}.dhcpv6
+     uci -q delete network.${wan6zone}.ndp
+     uci -q delete network.lan.ra
+     uci -q delete network.lan.dhcpv6
+     uci -q delete network.lan.ndp
+     uci -q delete dhcp.lan.ra
+     uci -q delete dhcp.lan.dhcpv6
+     uci -q delete dhcp.lan.ndp
+     uci set dhcp.lan.ra_management='0'
+	;;
+	1)
+     echo "NDP Native Mode"
+     uci -q delete network.${wan6zone}.master
+     uci -q delete network.${wan6zone}.ra
+     uci -q delete network.${wan6zone}.dhcpv6
+     uci -q delete network.${wan6zone}.ndp
+     uci -q delete network.lan.ra
+     uci -q delete network.lan.dhcpv6
+     uci -q delete network.lan.ndp
+     uci set dhcp.lan.ra='server'
+     uci set dhcp.lan.dhcpv6='server'
+     uci set dhcp.lan.ra_management='1'
+	;;
+	2)
+     echo "DHCPv6 Relay Mode"
+     uci set network.${wan6zone}.master='1'
+		 uci set network.${wan6zone}.ra='relay'
+		 uci set network.${wan6zone}.dhcpv6='relay'
+		 uci set network.${wan6zone}.ndp='relay'
+		 uci set network.lan.ra='relay'
+		 uci set network.lan.dhcpv6='relay'
+		 uci set network.lan.ndp='relay'
+		 uci set dhcp.lan.ra='relay'
+     uci set dhcp.lan.dhcpv6='relay'
+     uci set dhcp.lan.ra_management='1'
+	;;	
+	esac
+	
+	case "${v6dns}" in
+	0)
+    echo "Disable v6 DNS"
+    uci set dhcp.@dnsmasq[0].filter_aaaa='1'
+	;;
+	1)
+    echo "Enable v6 DNS"
+    uci set dhcp.@dnsmasq[0].filter_aaaa='0'
+	;;
+	esac
+		
+	uci commit network
+	uci commit dhcp
+	/etc/init.d/network restart
+}
+
+boot() {
+	logger "IPv6 Setting Started"
+}

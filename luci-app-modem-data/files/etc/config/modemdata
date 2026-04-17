@@ -1,0 +1,6 @@
+
+config service
+	option fallover '0'
+	option enabled '0'
+	option device 'auto'
+

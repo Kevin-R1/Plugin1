@@ -1,0 +1,7 @@
+
+config ipv6set 'config'
+	option enable '1'
+	option wan6zone 'wan6'
+	option v6dns '1'
+	option mode '1'
+
