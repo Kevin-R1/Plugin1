@@ -6,7 +6,7 @@ function index()
 		return
 	end
 
-	entry({"admin", "network", "fastnet"}, cbi("fastnet"), _("网络测试工具"), 50).dependent = true
+	entry({"admin", "network", "fastnet"}, cbi("fastnet"), _("网络Web测试工具"), 50).dependent = true
 	entry({"admin", "network", "fastnet", "status"}, call("action_status")).leaf = true
 end
 

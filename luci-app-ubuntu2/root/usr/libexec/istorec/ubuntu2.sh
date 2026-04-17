@@ -1,5 +1,7 @@
+cat > /usr/libexec/istorec/ubuntu2.sh <<'EOF'
 #!/bin/sh
 # Author Xiaobao(xiaobao@linkease.com)
+# Fixed by professional tutor
 
 ACTION=${1}
 shift 1
@@ -9,17 +11,21 @@ do_install() {
   local image_name=`uci get ubuntu2.@main[0].image_name 2>/dev/null`
   local config=`uci get ubuntu2.@main[0].config_path 2>/dev/null`
   local pwd=`uci get ubuntu2.@main[0].password 2>/dev/null`
-  if [ -z ${IMAGE_NAME} ]; then
+
+  if [ -z "${image_name}" ]; then
     local arch=`uname -m`
     if [ "$arch" = "x86_64" ]; then
-      IMAGE_NAME=linkease/desktop-ubuntu2-standard-amd64:latest
+      image_name="linkease/desktop-ubuntu2-standard-amd64:latest"
     else
-      IMAGE_NAME=linkease/desktop-ubuntu2-standard-arm64:latest
+      image_name="linkease/desktop-ubuntu2-standard-arm64:latest"
     fi
   fi
 
-  echo "docker pull ${image_name}"
-  docker pull ${image_name}
+  echo "==================================="
+  echo "使用镜像: ${image_name}"
+  echo "==================================="
+
+  docker pull "${image_name}"
   docker rm -f ubuntu2
 
   if [ -z "$config" ]; then
@@ -27,32 +33,33 @@ do_install() {
       exit 1
   fi
 
-  # not conflict with jellyfin
   [ -z "$https_port" ] && https_port=3001
 
   local cmd="docker run --restart=unless-stopped -d --user 0:0 -e START_DOCKER=false -v \"$config:/config\" \
     --privileged --device /dev/fuse --security-opt apparmor=unconfined --shm-size=512m \
     -v /var/run/docker.sock:/var/run/docker.sock \
     --dns=172.17.0.1 \
-    -p $https_port:3001 "
+    -p ${https_port}:3001 "
 
   if [ -n "$pwd" ]; then
-    cmd="$cmd -e \"PASSWORD=$pwd\" "
+    cmd="${cmd} -e \"PASSWORD=${pwd}\" "
   fi
 
+  # 自定义用户名 namia
+  cmd="${cmd} -e CUSTOM_USER=namia "
+
   if [ -d /dev/dri ]; then
-    cmd="$cmd\
-    --device /dev/dri:/dev/dri "
+    cmd="${cmd} --device /dev/dri:/dev/dri "
   fi
 
   local tz="`uci get system.@system[0].zonename | sed 's/ /_/g'`"
-  [ -z "$tz" ] || cmd="$cmd -e TZ=$tz"
+  [ -z "$tz" ] || cmd="${cmd} -e TZ=${tz}"
 
-  cmd="$cmd -v /mnt:/mnt"
-  mountpoint -q /mnt && cmd="$cmd:rslave"
-  cmd="$cmd --name ubuntu2 \"$image_name\""
+  cmd="${cmd} -v /mnt:/mnt"
+  mountpoint -q /mnt && cmd="${cmd}:rslave"
+  cmd="${cmd} --name ubuntu2 \"${image_name}\""
 
-  echo "$cmd"
+  echo "执行命令: $cmd"
   eval "$cmd"
 }
 
@@ -90,3 +97,4 @@ case ${ACTION} in
     exit 1
   ;;
 esac
+EOF

@@ -7,25 +7,18 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=airconnect
-PKG_VERSION:=1.9.3
+PKG_VERSION:=1.8.3
 PKG_RELEASE=1
 
 PKG_SOURCE:=AirConnect-$(PKG_VERSION).zip
 PKG_SOURCE_URL:=https://github.com/philippe44/AirConnect/releases/download/$(PKG_VERSION)/
-PKG_HASH:=9ad2bf7397e1c7617c3112dd4c450b5f403a62470ad9e9e6a04db1b0f2f6db73
+PKG_HASH:=f103595c522b0a4eeca8cb02301a35005d069d4298991ae82e9c312ddb7c8270
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/airconnect-$(PKG_VERSION)
 
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILE:=LICENSE
 PKG_MAINTAINER:=sbwml <admin@cooluc.com>
-
-ifeq ($(ARCH),arm)
-  ARM_CPU_FEATURES:=$(word 2,$(subst +,$(space),$(call qstrip,$(CONFIG_CPU_TYPE))))
-  ifeq ($(ARM_CPU_FEATURES),)
-    ARCH:=armv6
-  endif
-endif
 
 include $(INCLUDE_DIR)/package.mk
 

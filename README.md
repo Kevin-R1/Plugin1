@@ -9,7 +9,7 @@
 
 ### 在源码根目录下载到package中
 
-        git clone https://github.com/Little-ku/Plugin.git package/Plugin
+        git clone -b lede-18.06 https://github.com/Little-ku/Plugin.git package/Plugin
         
 ### 把它放到feeds.conf.default文件
 ### 记得删除这些
@@ -22,8 +22,8 @@
          
 ### rm 是删除openwrt-23源码的18.06不用
 
-       src-git Plugin https://github.com/Little-ku/Plugin.git
-       #src-git Plugin https://github.com/Little-ku/Plugin.git;lede-18.06
+       #src-git Plugin https://github.com/Little-ku/Plugin.git
+       src-git Plugin https://github.com/Little-ku/Plugin.git;lede-18.06
        
        
        ./scripts/feeds update -a
