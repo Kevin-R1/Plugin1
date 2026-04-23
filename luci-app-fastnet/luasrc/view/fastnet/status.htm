@@ -14,7 +14,13 @@
 		<div class="cbi-value">
 			<label class="cbi-value-title"><%:Open Web UI%></label>
 			<div class="cbi-value-field">
-				<a href="<%=self.url%>" target="_blank" rel="noreferrer"><%:Open Web UI%></a>
+				<% if self.url then %>
+				<button class="btn cbi-button cbi-button-apply" onclick="window.open('<%=self.url%>', '_blank')">
+					<%:Open Web UI%>
+				</button>
+				<% else %>
+				<span style="color: gray"><%:Open Web UI%></span>
+				<% end %>
 			</div>
 		</div>
 	</div>
